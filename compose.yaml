@@ -1,0 +1,59 @@
+services:
+  backend:
+    build:
+      context: backend/
+    ports:
+      - "8000:8000"
+    command: >
+      sh -c "python manage.py collectstatic --noinput &&
+             python manage.py migrate &&
+             python manage.py createsuperuser --noinput
+             python manage.py runserver 0.0.0.0:8000"
+    env_file:
+      - .env
+    environment:
+      - POSTGRES_HOST=db
+      - DJANGO_SUPERUSER_EMAIL=admin@ya.ru
+      - DJANGO_SUPERUSER_FIRST_NAME=admin
+      - DJANGO_SUPERUSER_LAST_NAME=admin
+      - DJANGO_SUPERUSER_IS_TEACHER=True
+      - DJANGO_SUPERUSER_PASSWORD=admin
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - mynetwork
+  db:
+    image: postgres
+    restart: always
+    user: postgres
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    env_file:
+      - .env
+    expose:
+      - 5432
+    healthcheck:
+      test: [ "CMD", "pg_isready" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - mynetwork
+  frontend:
+    build: 
+      context: frontend/
+    ports:
+      - 127.0.0.1:8080:8080
+    environment:
+      NODE_ENV: production
+    networks:
+      - mynetwork
+    depends_on:
+      - backend
+    
+volumes:
+  db-data:
+
+networks:
+  mynetwork:
